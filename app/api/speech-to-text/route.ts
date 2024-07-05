@@ -1,29 +1,35 @@
 import { NextResponse } from "next/server";
 import { SpeechClient } from "@google-cloud/speech";
+import { Storage } from "@google-cloud/storage";
 import fs from "fs";
 import path from "path";
 
 let speechClient: SpeechClient;
+let storage: Storage;
 
 try {
-//   const credentialsEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS || "{}";
-//   console.log("Parsing credentials:", credentialsEnv);
-//   const credentials = JSON.parse(credentialsEnv);
-  speechClient = new SpeechClient();
+  speechClient = new SpeechClient({
+    keyFilename: 'google-credentials.json',
+  });
+  storage = new Storage({
+    keyFilename: 'google-credentials.json',
+  });
 } catch (error) {
-  console.error("Error initializing Speech-to-Text client:", error);
+  console.error("Error initializing Google Cloud clients:", error);
 }
 
+const bucketName = 'rony-bucket'; // Replace with your GCS bucket name
+
 export async function POST(request: Request) {
-  if (!speechClient) {
+  if (!speechClient || !storage) {
     return NextResponse.json(
-      { error: "Speech-to-Text client not initialized" },
+      { error: "Google Cloud clients not initialized" },
       { status: 500 }
     );
   }
 
   try {
-    const data = await request.json();
+    const data = await request.json() as { filename?: string };
     console.log("Received data:", data);
     const { filename } = data;
 
@@ -40,15 +46,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const file = fs.readFileSync(filePath);
-    const audioBytes = file.toString("base64");
+    // Upload file to Google Cloud Storage
+    const bucket = storage.bucket(bucketName);
+    const gcsFileName = `audio-${Date.now()}-${filename}`;
+    await bucket.upload(filePath, {
+      destination: gcsFileName,
+    });
+
+    const gcsUri = `gs://${bucketName}/${gcsFileName}`;
 
     // Configure the request
     const audio = {
-      content: audioBytes,
+      uri: gcsUri,
     };
     const config = {
-    encoding: "MP3" as const, // Specify MP3 encoding
+      encoding: "MP3" as const,
       sampleRateHertz: 16000,
       languageCode: "en-US",
       enableWordTimeOffsets: false
@@ -58,13 +70,22 @@ export async function POST(request: Request) {
       config: config,
     };
 
-    // Perform the speech recognition
-    const [response] = await speechClient.recognize(speechRequest);
-    const transcription =
-      response.results
-        ?.map((result) => result.alternatives?.[0]?.transcript ?? "")
-        .join("\n") ?? "";
-console.log("Transcription:", transcription);
+    // Starts a long running recognition operation
+    const [operation] = await speechClient.longRunningRecognize(speechRequest);
+
+    // Wait for the operation to complete
+    const [response] = await operation.promise();
+
+    // Extract the transcription
+    const transcription = response.results
+      ?.map((result) => result.alternatives?.[0]?.transcript ?? "")
+      .join("\n") ?? "";
+
+    console.log("Transcription:", transcription);
+
+    // Delete the file from GCS after transcription
+    await bucket.file(gcsFileName).delete();
+
     return NextResponse.json({ text: transcription });
   } catch (error) {
     console.error("Error in speech-to-text:", error);
