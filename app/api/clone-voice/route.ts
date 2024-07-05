@@ -1,41 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import FormData from 'form-data';
+import { NextResponse } from 'next/server';
 import fetch from 'node-fetch';
+import FormData from 'form-data';
 
-export const POST = async (req: NextRequest) => {
+export async function POST(request: Request) {
   try {
-    const { filename } = await req.json();
+    const { audio_url} = await request.json();
 
-    if (!filename) {
-      return NextResponse.json({ error: 'Filename  name  required' }, { status: 400 });
-    }
+    // Create a FormData instance
+    const form = new FormData();
+    form.append('sample_file_url',audio_url);
+    form.append('voice_name', 'Cloned Voice');
 
-    const formData = new FormData();
-    formData.append('sample_file', fs.createReadStream(`public/uploads/${filename}`));
-    formData.append('voice_name', 'Clonned Voice');
-
-    const url = 'https://api.play.ht/api/v2/cloned-voices/instant';
-    const options = {
+    const response = await fetch('https://api.play.ht/api/v2/cloned-voices/instant/', {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        AUTHORIZATION: process.env.PLAYHT_API_SECRET_KEY!,
-        'X-USER-ID': process.env.PLAYHT_USER_ID!,
+        AUTHORIZATION: process.env.PLAYHT_API_SECRET_KEY as string, // Replace with your actual API Secret Key
+        'X-USER-ID': process.env.PLAYHT_USER_ID as string, // Replace with your actual User ID
       },
-      body: formData,
-    };
+      body: form,
+    });
 
-    const response = await fetch(url, options);
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}: ${response.statusText}`);
+      const errorData = await response.text();
+      console.error('PlayHT API Error:', errorData);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
     }
 
-    const jsonResponse = await response.json();
-    console.log(jsonResponse)
-    return NextResponse.json(jsonResponse, { status: 200 });
+    const result = await response.json();
+    return NextResponse.json({ id: result.id });
   } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error('Error in voice cloning:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'An unknown error occurred' },
+      { status: 500 }
+    );
   }
-};
+}

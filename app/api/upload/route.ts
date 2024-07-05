@@ -1,26 +1,41 @@
-import { NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
+import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
 
-export async function POST(request: Request) {
-  const data = await request.formData();
-  const file: File | null = data.get('file') as unknown as File;
-
-  if (!file) {
-    return NextResponse.json({ success: false });
-  }
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const filename = `${file.name}`;
-  const filePath = path.join(process.cwd(), 'public', 'uploads', filename);
+async function uploadAudioToCloudinary(audioFile: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", audioFile);
+  formData.append("upload_preset", "mgf79dzn");
+  formData.append("resource_type", "audio");
 
   try {
-    await writeFile(filePath, buffer);
-    return NextResponse.json({ success: true, filename });
+    const response = await axios.post(
+      "https://api.cloudinary.com/v1_1/dpgvsl8ap/upload",
+      formData
+    );
+    return response.data.secure_url;
   } catch (error) {
-    console.error('Error saving file:', error);
-    return NextResponse.json({ success: false });
+    console.error("Error uploading audio to Cloudinary:", error);
+    throw error;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const data = await req.formData();
+    const file: File | null = data.get('file') as unknown as File;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    const audioUrl = await uploadAudioToCloudinary(file);
+
+    return NextResponse.json({ 
+      success: true,
+      audio_url: audioUrl
+    }, { status: 200 });
+  } catch (error) {
+    console.error('Error:', error);
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }

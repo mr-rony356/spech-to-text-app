@@ -24,13 +24,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         text: text,
         voice: voiceId,
-        output_format: 'mp3',
         voice_engine: 'PlayHT2.0',
         quality: 'premium',
-        speed: 1,
-        sample_rate: 24000,
-        voice_guidance: 3,
-        style_guidance: 20
             }),
     });
 
