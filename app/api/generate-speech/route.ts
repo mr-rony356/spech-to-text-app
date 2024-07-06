@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     const { voiceId, text } = await request.json();
 
     if (!voiceId || !text) {
+      console.error("Missing voiceId or text");
       return NextResponse.json(
         { error: "Missing voiceId or text" },
         { status: 400 }
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
         voice: voiceId,
         voice_engine: 'PlayHT2.0',
         quality: 'premium',
-            }),
+      }),
     });
 
     if (!response.ok) {
