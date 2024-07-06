@@ -1,3 +1,4 @@
+// pages/api/generate-speech.background.ts
 import { NextResponse } from "next/server";
 import fetch from "node-fetch";
 import { Readable } from "stream";
@@ -7,11 +8,7 @@ export async function POST(request: Request) {
     const { voiceId, text } = await request.json();
 
     if (!voiceId || !text) {
-      console.error("Missing voiceId or text");
-      return NextResponse.json(
-        { error: "Missing voiceId or text" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing voiceId or text" }, { status: 400 });
     }
 
     const response = await fetch("https://api.play.ht/api/v2/tts", {
@@ -32,10 +29,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("PlayHT API Error:", errorData);
-      throw new Error(
-        `HTTP error! status: ${response.status}, message: ${errorData}`
-      );
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
     }
 
     const body = response.body as unknown as Readable;
@@ -56,8 +50,8 @@ export async function POST(request: Request) {
               if (parsedData.url) {
                 return NextResponse.json({ audioUrl: parsedData.url });
               }
-            } catch (parseError) {
-              console.error("Error parsing JSON:", parseError);
+            } catch (parseError:any) {
+              throw new Error("Error parsing JSON: " + parseError.message);
             }
           }
         }
@@ -71,14 +65,7 @@ export async function POST(request: Request) {
     }
 
     throw new Error("No completed event with valid URL received");
-  } catch (error) {
-    console.error("Error in text-to-speech:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "An unknown error occurred",
-      },
-      { status: 500 }
-    );
+  } catch (error:any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
