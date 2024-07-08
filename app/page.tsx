@@ -1,6 +1,5 @@
 "use client";
 
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -9,6 +8,7 @@ type FormData = {
   description: string;
   labels: string;
 };
+
 interface Voice {
   id: string;
   name: string;
@@ -22,9 +22,10 @@ export default function Home() {
   const [isGeneratingSpeech, setIsGeneratingSpeech] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit } = useForm<FormData>();
-  const [voices, setVoices] = useState([]);
+  const [voices, setVoices] = useState<Voice[]>([]);
   const [error, setError] = useState("");
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+
   useEffect(() => {
     const fetchVoices = async () => {
       try {
@@ -73,7 +74,7 @@ export default function Home() {
         };
         console.log("Sending JSON to speech-to-text:", payload);
 
-        const sttResponse = await fetch("/api/openai", {
+        const sttResponse = await fetch("/api/spech-to-text", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -115,10 +116,35 @@ export default function Home() {
     }
   };
 
+  const pollTTSStatus = async (taskId: string) => {
+    try {
+      let retries = 0;
+      const pollInterval = 4000; // 4 seconds
+      const maxRetries = 120; // 8 minutes
+
+      while (retries < maxRetries) {
+        const response = await fetch(`/api/check-status?taskId=${taskId}`);
+        const statusData = await response.json();
+
+        if (statusData.status === "complete" && statusData.output && statusData.output.url) {
+          return statusData.output.url;
+        }
+
+        retries += 1;
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      }
+
+      throw new Error("Timeout: Audio generation did not complete in time");
+    } catch (error) {
+      console.error("Error in polling TTS status:", error);
+      throw error;
+    }
+  };
+
   const onGenerateSpeech = async () => {
     setIsGeneratingSpeech(true);
     try {
-      const response = await fetch("/api/generate-speech", {
+      const response = await fetch("/api/ini-id", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,12 +159,11 @@ export default function Home() {
         throw new Error(`Speech generation failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      if (data.audioUrl) {
-        setAudioUrl(data.audioUrl);
-      } else {
-        throw new Error("No audio URL received from the server");
-      }
+      const { taskId } = await response.json();
+      console.log("TTS task initiated, taskId:", taskId);
+
+      const audioUrl = await pollTTSStatus(taskId);
+      setAudioUrl(audioUrl);
     } catch (error) {
       console.error("Error generating speech:", error);
       // You might want to show an error message to the user here
@@ -146,6 +171,7 @@ export default function Home() {
       setIsGeneratingSpeech(false);
     }
   };
+
   const deleteVoice = async (voiceId: string) => {
     try {
       const response = await fetch("/api/delete-voice", {
@@ -164,12 +190,13 @@ export default function Home() {
       console.log("Delete response:", data);
 
       // Remove the deleted voice from the state
-      setVoices(voices.filter((voice: Voice) => voice.id !== voiceId));
+      setVoices(voices.filter((voice) => voice.id !== voiceId));
     } catch (error) {
       console.error("Error deleting voice:", error);
       setError("Failed to delete voice");
     }
   };
+
   const refreshVoices = async () => {
     setIsLoadingVoices(true);
     setError("");
@@ -186,6 +213,7 @@ export default function Home() {
       setIsLoadingVoices(false);
     }
   };
+
   return (
     <div className="container mx-auto p-4 flex flex-col items-center gap-6 w-full">
       <h1 className="text-4xl font-bold mb-4 text-center my-8">
@@ -209,26 +237,25 @@ export default function Home() {
       </form>
       <div>
         <div className="flex gap-4">
-
-        <h1 className="text-2xl">Available Cloned Voices</h1>
-        <button
-          onClick={refreshVoices}
-          className="bg-blue-500 text-white p-1 px-2 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          aria-label="Refresh voice list"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+          <h1 className="text-2xl">Available Cloned Voices</h1>
+          <button
+            onClick={refreshVoices}
+            className="bg-blue-500 text-white p-1 px-2 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            aria-label="Refresh voice list"
           >
-            <path
-              fillRule="evenodd"
-              d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
         </div>
 
         {isLoadingVoices ? (
@@ -239,7 +266,7 @@ export default function Home() {
           <p className="text-center">No voices found.</p>
         ) : (
           <ul className="flex flex-col gap-4 my-6">
-            {voices.map((voice: Voice, index) => (
+            {voices.map((voice, index) => (
               <li key={voice.id} className="flex justify-between items-center">
                 <span>
                   {index + 1}. {voice.name}
@@ -254,7 +281,7 @@ export default function Home() {
             ))}
           </ul>
         )}
-        <small>For now You can only use one clonned voice at a time </small>
+        <small>For now You can only use one cloned voice at a time </small>
       </div>{" "}
       {isLoading && (
         <div className="mb-4">
@@ -264,7 +291,7 @@ export default function Home() {
       {text && (
         <div className="mb-4 min-w-full">
           <h2 className="text-xl font-semibold mb-2">Transcribed Text</h2>
-          <small>You Can edit text Genarate Colned voice audio </small>
+          <small>You Can edit text Generate Cloned voice audio </small>
           <div className="flex items-center my-4">
             <textarea
               value={text}
