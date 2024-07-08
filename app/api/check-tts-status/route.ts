@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Poll for the task status
     const statusResponse = await fetch(
-      `https://api.play.ht/api/v2/tts/${taskId}`,
+      `https://api.play.ht/api/v2/tts/${taskId}?format=event-stream`,
       {
         method: "GET",
         headers: {
