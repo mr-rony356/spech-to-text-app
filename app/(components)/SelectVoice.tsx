@@ -5,7 +5,10 @@ interface Voice {
   // Add other properties as needed
 }
 
-const SelectVoice = () => {
+const SelectVoice: React.FC<{
+  setClonedVoiceId: React.Dispatch<React.SetStateAction<string>>;
+  setText: React.Dispatch<React.SetStateAction<string>>;
+}> = ({ setClonedVoiceId, setText }) => {
   const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const [error, setError] = useState("");
   const [voices, setVoices] = useState<Voice[]>([]);
@@ -69,6 +72,11 @@ const SelectVoice = () => {
       setError("Failed to delete voice");
     }
   };
+  const selectVoice = async (voiceId: string) => {
+    setClonedVoiceId(voiceId);
+
+    setText(`Hey its a cloned voice Please feel free to adjust the text`);
+  };
 
   return (
     <div>
@@ -111,7 +119,7 @@ const SelectVoice = () => {
                 {index + 1}. {voice.name}
               </span>
               <button
-                onClick={() => deleteVoice(voice.id)}
+                onClick={() => selectVoice(voice.id)}
                 className="bg-green-500 text-white px-2 py-1 rounded"
               >
                 Select Voice
@@ -126,7 +134,6 @@ const SelectVoice = () => {
           ))}
         </ul>
       )}
-      <small>For now You can only use one cloned voice at a time </small>
     </div>
   );
 };

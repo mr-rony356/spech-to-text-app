@@ -4,12 +4,12 @@ import FormData from 'form-data';
 
 export async function POST(request: Request) {
   try {
-    const { audio_url} = await request.json();
+    const { audio_url,voice_name} = await request.json();
 
     // Create a FormData instance
     const form = new FormData();
     form.append('sample_file_url',audio_url);
-    form.append('voice_name', 'Cloned Voice');
+    form.append('voice_name', voice_name);
 
     const response = await fetch('https://api.play.ht/api/v2/cloned-voices/instant/', {
       method: 'POST',

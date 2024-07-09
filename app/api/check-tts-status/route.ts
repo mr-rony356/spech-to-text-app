@@ -15,12 +15,14 @@ export async function GET(request: NextRequest) {
 
     // Poll for the task status
     const statusResponse = await fetch(
-      `https://api.play.ht/api/v2/tts/${taskId}?format=event-stream`,
+      `https://api.play.ht/api/v2/tts/${taskId}`,
       {
         method: "GET",
         headers: {
+          accept: "application/json",
           AUTHORIZATION: process.env.PLAYHT_API_SECRET_KEY as string,
           "X-USER-ID": process.env.PLAYHT_USER_ID as string,
+          
         },
       }
     );
