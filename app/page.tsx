@@ -11,8 +11,8 @@ import {
   generateSpeech,
   pollTTSStatus,
 } from "./api";
-import { toast } from "react-toastify";
-
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 interface FormData {
   audio: FileList;
   description: string;
@@ -67,7 +67,6 @@ export default function Home() {
   const onGenerateSpeech = async () => {
     setAudioUrl("");
     setIsProcessing(true);
-    toast.success("Speech generated successfully!");
 
     try {
       const taskId = await generateSpeech(clonedVoiceId, text);
@@ -131,6 +130,7 @@ export default function Home() {
           <PlayAudio audioUrl={audioUrl} />
         </div>
       )}
+        <ToastContainer position="bottom-right" autoClose={5000} />
     </div>
   );
 }
