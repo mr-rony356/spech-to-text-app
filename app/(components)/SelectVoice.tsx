@@ -84,7 +84,7 @@ const SelectVoice: React.FC<{
         <h1 className="text-2xl">Available Cloned Voices</h1>
         <button
           onClick={refreshVoices}
-          className="bg-blue-500 text-white p-1 px-2 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+          className=" text-white p-1 px-3 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
           aria-label="Refresh voice list"
         >
           <svg
@@ -120,13 +120,13 @@ const SelectVoice: React.FC<{
               </span>
               <button
                 onClick={() => selectVoice(voice.id)}
-                className="bg-green-500 text-white px-2 py-1 rounded"
+                className="bg-green-600 text-white px-2 text-sm py-1 rounded"
               >
                 Select Voice
               </button>
               <button
                 onClick={() => deleteVoice(voice.id)}
-                className="bg-red-500 text-white px-2 py-1 rounded"
+                className="bg-red-500 text-white text-sm px-2 py-1 rounded"
               >
                 Delete Voice
               </button>
